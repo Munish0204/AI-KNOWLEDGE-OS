@@ -1,0 +1,19 @@
+const mongoose = require("mongoose");
+
+const activitySchema = new mongoose.Schema({
+
+    user:{
+        type:mongoose.Schema.Types.ObjectId,
+        ref:"User"
+    },
+
+    action:String,
+
+    description:String
+
+},
+{
+    timestamps:true
+});
+
+module.exports = mongoose.model("Activity",activitySchema);
