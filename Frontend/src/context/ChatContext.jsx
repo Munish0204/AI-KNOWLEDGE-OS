@@ -1,5 +1,20 @@
-import { createContext } from 'react'
+import { createContext, useState } from "react";
 
-const ChatContext = createContext(null)
+export const ChatContext = createContext();
 
-export default ChatContext
+const ChatProvider = ({ children }) => {
+  const [messages, setMessages] = useState([]);
+
+  return (
+    <ChatContext.Provider
+      value={{
+        messages,
+        setMessages,
+      }}
+    >
+      {children}
+    </ChatContext.Provider>
+  );
+};
+
+export default ChatProvider;

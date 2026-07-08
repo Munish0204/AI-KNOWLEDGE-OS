@@ -1,5 +1,24 @@
-import { createContext } from 'react'
+import { createContext, useState } from "react";
 
-const ThemeContext = createContext(null)
+export const ThemeContext = createContext();
 
-export default ThemeContext
+const ThemeProvider = ({ children }) => {
+  const [darkMode, setDarkMode] = useState(false);
+
+  const toggleTheme = () => {
+    setDarkMode(!darkMode);
+  };
+
+  return (
+    <ThemeContext.Provider
+      value={{
+        darkMode,
+        toggleTheme,
+      }}
+    >
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+export default ThemeProvider;

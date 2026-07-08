@@ -1,5 +1,20 @@
-import { createContext } from 'react'
+import { createContext, useState } from "react";
 
-const NoteContext = createContext(null)
+export const NoteContext = createContext();
 
-export default NoteContext
+const NoteProvider = ({ children }) => {
+  const [notes, setNotes] = useState([]);
+
+  return (
+    <NoteContext.Provider
+      value={{
+        notes,
+        setNotes,
+      }}
+    >
+      {children}
+    </NoteContext.Provider>
+  );
+};
+
+export default NoteProvider;
