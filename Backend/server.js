@@ -1,9 +1,9 @@
-require("dotenv").config();
-
 const express = require("express");
 const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
+
+require("dotenv").config({ path: path.resolve(__dirname, ".env") });
 
 const connectDB = require("./config/database");
 const rateLimiter = require("./middleware/rateLimiter");
@@ -45,7 +45,6 @@ app.get("/", (req, res) => {
 // API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
-app.use("/api/chats", chatRoutes);
 app.use("/api/notes", noteRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/documents", documentRoutes);
@@ -55,6 +54,13 @@ app.use("/api/summary", summaryRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/recommendations", recommendationRoutes);
+app.use("/api/chat", chatRoutes);
+
+
+
+
+
+
 
 // 404 Handler
 app.use((req, res) => {

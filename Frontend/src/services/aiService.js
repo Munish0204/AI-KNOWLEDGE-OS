@@ -1,3 +1,7 @@
-const aiService = {}
+import api from "./api";
 
-export default aiService
+export const askAI = (prompt) =>
+  api.post("/ai/chat", { prompt });
+
+export const summarizeText = (text) =>
+  api.post("/ai/summarize", { text });

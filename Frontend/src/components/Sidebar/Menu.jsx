@@ -7,7 +7,6 @@ const menuItems = [
   { name: "Voice", path: "/voice" },
   { name: "Tasks", path: "/tasks" },
   { name: "Profile", path: "/profile" },
-  { name: "Admin", path: "/admin" },
 ];
 
 const Menu = () => {
