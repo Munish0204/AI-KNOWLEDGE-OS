@@ -21,6 +21,7 @@ const summaryRoutes = require("./routes/summaryRoutes");
 const searchRoutes = require("./routes/searchRoutes");
 const analyticsRoutes = require("./routes/analyticsRoutes");
 const recommendationRoutes = require("./routes/recommendationRoutes");
+const calendarRoutes = require("./routes/calendarRoutes");
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use("/api/search", searchRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/recommendations", recommendationRoutes);
 app.use("/api/chat", chatRoutes);
+app.use("/api/calendar", calendarRoutes);
 
 
 

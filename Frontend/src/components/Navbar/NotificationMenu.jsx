@@ -1,26 +1,25 @@
+import { useContext } from "react";
+import { ChatContext } from "../../context/ChatContext";
+
 const NotificationMenu = () => {
-  const notifications = [
-    "New document uploaded",
-    "Task reminder",
-    "AI response completed",
-  ];
+  const { hasUnreadResponse, markResponsesRead } = useContext(ChatContext);
 
   return (
     <div className="relative group">
-      <button className="text-2xl">
+      <button
+        type="button"
+        onClick={markResponsesRead}
+        className="relative text-2xl"
+        aria-label="Notifications"
+      >
         🔔
+        {hasUnreadResponse ? (
+          <span
+            className="absolute right-0 top-0 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-slate-900"
+            aria-label="Unread AI response"
+          />
+        ) : null}
       </button>
-
-      <div className="absolute right-0 mt-2 w-64 bg-white text-black rounded-lg shadow-lg hidden group-hover:block">
-        {notifications.map((item, index) => (
-          <div
-            key={index}
-            className="p-3 border-b last:border-none hover:bg-gray-100"
-          >
-            {item}
-          </div>
-        ))}
-      </div>
     </div>
   );
 };

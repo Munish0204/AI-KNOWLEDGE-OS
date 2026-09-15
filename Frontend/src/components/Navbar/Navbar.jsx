@@ -63,13 +63,6 @@ const Navbar = () => {
           >
             Calendar
           </button>
-          <button
-            type="button"
-            onClick={() => navigate("/reminders")}
-            className="nav-icon-btn rounded-lg px-3 py-2 font-medium"
-          >
-            Reminders
-          </button>
         </div>
 
         {/* Right side */}

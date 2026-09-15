@@ -1,6 +1,16 @@
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import api from "../../services/api";
 import { deleteChat, getChatHistory } from "../../services/chatService";
+import { ChatContext } from "../../context/ChatContext";
+
+const getGreeting = () => {
+  const hour = new Date().getHours();
+
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  if (hour < 21) return "Good evening";
+  return "Good night";
+};
 
 const Chat = () => {
   const [message, setMessage] = useState("");
@@ -10,6 +20,17 @@ const Chat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [error, setError] = useState("");
+  const { markResponseUnread } = useContext(ChatContext);
+  const storedUser = localStorage.getItem("user");
+  let userName = "there";
+
+  if (storedUser) {
+    try {
+      userName = JSON.parse(storedUser).name || userName;
+    } catch {
+      userName = "there";
+    }
+  }
 
   useEffect(() => {
     let isMounted = true;
@@ -74,6 +95,7 @@ const Chat = () => {
       ]);
       setActiveChatId(newChat._id);
       setPendingQuestion("");
+      markResponseUnread();
     } catch (chatError) {
       setError(
         chatError?.response?.data?.message ||
@@ -279,6 +301,9 @@ const Chat = () => {
         ) : messages.length === 0 ? (
           <div className="chat-empty">
             <span className="chat-empty-icon">💬</span>
+            <p className="text-xl font-semibold text-slate-700">
+              {getGreeting()}, {userName}
+            </p>
             <p>Ask a question to start the chat.</p>
           </div>
         ) : (
