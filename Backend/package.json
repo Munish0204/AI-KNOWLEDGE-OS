@@ -34,7 +34,7 @@
     "multer": "^2.2.0",
     "multer-storage-cloudinary": "^4.0.0",
     "openai": "^6.45.0",
-    "pdf-parse": "^2.4.5",
+    "pdf-parse": "^1.1.1",
     "tesseract.js": "^7.0.0",
     "uuid": "^14.0.1"
   },

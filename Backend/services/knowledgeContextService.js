@@ -1,7 +1,7 @@
 const fs = require("fs/promises");
 const path = require("path");
 const mammoth = require("mammoth");
-const { PDFParse } = require("pdf-parse");
+const pdfParse = require("pdf-parse");
 const Note = require("../models/Note");
 const Task = require("../models/Task");
 const Document = require("../models/Document");
@@ -37,9 +37,7 @@ const getDocumentText = async (document) => {
     }
 
     if (document.fileType === "application/pdf") {
-      const parser = new PDFParse({ data: fileBuffer });
-      const result = await parser.getText();
-      await parser.destroy();
+      const result = await pdfParse(fileBuffer);
       return result.text.slice(0, MAX_DOCUMENT_CHARS);
     }
   } catch {
