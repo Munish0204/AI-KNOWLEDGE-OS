@@ -74,13 +74,26 @@ pipeline {
                     bat '''
                         @echo off
 
-                        echo Logging into Docker Hub...
+                        if not defined REG_USER (
+                            echo ERROR: Docker Hub username is empty in Jenkins credential docker-registry-creds.
+                            exit /b 1
+                        )
 
-                        echo %REG_PASS% | docker login ^
-                        -u %REG_USER% ^
-                        --password-stdin
+                        if not defined REG_PASS (
+                            echo ERROR: Docker Hub access token is empty in Jenkins credential docker-registry-creds.
+                            exit /b 1
+                        )
 
-                        if errorlevel 1 exit /b 1
+                        echo Logging into Docker Hub using PowerShell...
+
+                        powershell.exe -NoProfile -NonInteractive -Command "$env:REG_PASS | docker login --username $env:REG_USER --password-stdin; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+
+                        if errorlevel 1 (
+                            echo ERROR: Docker Hub login failed. Check credential docker-registry-creds; use the Docker Hub username and a valid access token.
+                            exit /b 1
+                        )
+
+                        echo Docker Hub login successful!
 
                         echo Pushing Frontend Image...
 
