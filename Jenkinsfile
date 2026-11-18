@@ -8,23 +8,26 @@ pipeline {
     }
 
     environment {
+        REGISTRY = 'docker.io/muneeswaran02'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+
         FRONTEND_IMAGE = 'ai-knowledge-frontend'
-        BACKEND_IMAGE  = 'ai-knowledge-backend'
+        BACKEND_IMAGE = 'ai-knowledge-backend'
 
         FRONTEND_CONTAINER = 'ai-frontend'
-        BACKEND_CONTAINER  = 'ai-backend'
+        BACKEND_CONTAINER = 'ai-backend'
 
         FRONTEND_PORT = '3000'
-        BACKEND_PORT  = '8000'
+        BACKEND_PORT = '8000'
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Checking out AI KNOWLEDGE OS source code'
+                echo 'Checking out AI KNOWLEDGE OS'
                 checkout scm
-                sh 'ls -la'
+                bat 'dir'
             }
         }
 
@@ -32,11 +35,9 @@ pipeline {
             steps {
                 echo 'Building Frontend Docker Image'
 
-                sh '''
-                    docker build \
-                        -t ${FRONTEND_IMAGE}:latest \
-                        -f Frontend/Dockerfile \
-                        Frontend
+                bat '''
+                    docker build -t %REGISTRY%/%FRONTEND_IMAGE%:%IMAGE_TAG% -f Frontend/Dockerfile Frontend
+                    docker tag %REGISTRY%/%FRONTEND_IMAGE%:%IMAGE_TAG% %REGISTRY%/%FRONTEND_IMAGE%:latest
                 '''
             }
         }
@@ -45,44 +46,84 @@ pipeline {
             steps {
                 echo 'Building Backend Docker Image'
 
-                sh '''
-                    docker build \
-                        -t ${BACKEND_IMAGE}:latest \
-                        -f Backend/Dockerfile \
-                        Backend
+                bat '''
+                    docker build -t %REGISTRY%/%BACKEND_IMAGE%:%IMAGE_TAG% -f Backend/Dockerfile Backend
+                    docker tag %REGISTRY%/%BACKEND_IMAGE%:%IMAGE_TAG% %REGISTRY%/%BACKEND_IMAGE%:latest
                 '''
+            }
+        }
+
+        stage('Docker Hub Login and Push') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: 'docker-registry-creds',
+                        usernameVariable: 'REG_USER',
+                        passwordVariable: 'REG_PASS'
+                    )
+                ]) {
+                    bat '''
+                        @echo off
+                        echo %REG_PASS% | docker login -u %REG_USER% --password-stdin
+                        if errorlevel 1 exit /b 1
+
+                        docker push %REGISTRY%/%FRONTEND_IMAGE%:%IMAGE_TAG%
+                        if errorlevel 1 exit /b 1
+
+                        docker push %REGISTRY%/%FRONTEND_IMAGE%:latest
+                        if errorlevel 1 exit /b 1
+
+                        docker push %REGISTRY%/%BACKEND_IMAGE%:%IMAGE_TAG%
+                        if errorlevel 1 exit /b 1
+
+                        docker push %REGISTRY%/%BACKEND_IMAGE%:latest
+                        if errorlevel 1 exit /b 1
+                    '''
+                }
             }
         }
 
         stage('Deploy Frontend') {
             steps {
-                echo 'Deploying Frontend Container'
+                echo 'Deploying Frontend'
 
-                sh '''
-                    docker rm -f ${FRONTEND_CONTAINER} || true
+                bat '''
+                    docker rm -f %FRONTEND_CONTAINER% 2>NUL
 
-                    docker run -d \
-                        --name ${FRONTEND_CONTAINER} \
-                        --restart unless-stopped \
-                        -p ${FRONTEND_PORT}:80 \
-                        ${FRONTEND_IMAGE}:latest
+                    docker run -d ^
+                        --name %FRONTEND_CONTAINER% ^
+                        --restart unless-stopped ^
+                        -p %FRONTEND_PORT%:80 ^
+                        %REGISTRY%/%FRONTEND_IMAGE%:latest
+
+                    if errorlevel 1 exit /b 1
                 '''
             }
         }
 
         stage('Deploy Backend') {
             steps {
-                echo 'Deploying Backend Container'
+                echo 'Deploying Backend'
 
-                sh '''
-                    docker rm -f ${BACKEND_CONTAINER} || true
+                withCredentials([
+                    string(
+                        credentialsId: 'mongo-uri',
+                        variable: 'MONGO_URI'
+                    )
+                ]) {
+                    bat '''
+                        docker rm -f %BACKEND_CONTAINER% 2>NUL
 
-                    docker run -d \
-                        --name ${BACKEND_CONTAINER} \
-                        --restart unless-stopped \
-                        -p ${BACKEND_PORT}:8000 \
-                        ${BACKEND_IMAGE}:latest
-                '''
+                        docker run -d ^
+                            --name %BACKEND_CONTAINER% ^
+                            --restart unless-stopped ^
+                            -p %BACKEND_PORT%:8000 ^
+                            -e MONGO_URI ^
+                            %REGISTRY%/%BACKEND_IMAGE%:latest
+
+                        if errorlevel 1 exit /b 1
+                    '''
+                }
             }
         }
     }
@@ -93,10 +134,11 @@ pipeline {
         }
 
         failure {
-            echo 'Pipeline failed. Check the Jenkins console output.'
+            echo 'Pipeline Failed! Check Console Output.'
         }
 
         always {
+            bat 'docker logout docker.io'
             echo 'Jenkins Pipeline Execution Finished.'
         }
     }
