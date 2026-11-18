@@ -9,24 +9,25 @@ pipeline {
 
     environment {
         REGISTRY = 'docker.io/muneeswaran02'
-        IMAGE_TAG = "${BUILD_NUMBER}"
 
         FRONTEND_IMAGE = 'ai-knowledge-frontend'
-        BACKEND_IMAGE = 'ai-knowledge-backend'
+        BACKEND_IMAGE  = 'ai-knowledge-backend'
 
         FRONTEND_CONTAINER = 'ai-frontend'
-        BACKEND_CONTAINER = 'ai-backend'
+        BACKEND_CONTAINER  = 'ai-backend'
 
         FRONTEND_PORT = '3000'
-        BACKEND_PORT = '8000'
+        BACKEND_PORT  = '8000'
     }
 
     stages {
 
         stage('Checkout') {
             steps {
-                echo 'Checking out AI KNOWLEDGE OS'
+                echo 'Checking out AI KNOWLEDGE OS source code'
+
                 checkout scm
+
                 bat 'dir'
             }
         }
@@ -36,8 +37,12 @@ pipeline {
                 echo 'Building Frontend Docker Image'
 
                 bat '''
-                    docker build -t %REGISTRY%/%FRONTEND_IMAGE%:%IMAGE_TAG% -f Frontend/Dockerfile Frontend
-                    docker tag %REGISTRY%/%FRONTEND_IMAGE%:%IMAGE_TAG% %REGISTRY%/%FRONTEND_IMAGE%:latest
+                    docker build ^
+                    -t %REGISTRY%/%FRONTEND_IMAGE%:%BUILD_NUMBER% ^
+                    -f Frontend/Dockerfile ^
+                    Frontend
+
+                    docker tag %REGISTRY%/%FRONTEND_IMAGE%:%BUILD_NUMBER% %REGISTRY%/%FRONTEND_IMAGE%:latest
                 '''
             }
         }
@@ -47,8 +52,12 @@ pipeline {
                 echo 'Building Backend Docker Image'
 
                 bat '''
-                    docker build -t %REGISTRY%/%BACKEND_IMAGE%:%IMAGE_TAG% -f Backend/Dockerfile Backend
-                    docker tag %REGISTRY%/%BACKEND_IMAGE%:%IMAGE_TAG% %REGISTRY%/%BACKEND_IMAGE%:latest
+                    docker build ^
+                    -t %REGISTRY%/%BACKEND_IMAGE%:%BUILD_NUMBER% ^
+                    -f Backend/Dockerfile ^
+                    Backend
+
+                    docker tag %REGISTRY%/%BACKEND_IMAGE%:%BUILD_NUMBER% %REGISTRY%/%BACKEND_IMAGE%:latest
                 '''
             }
         }
@@ -64,20 +73,32 @@ pipeline {
                 ]) {
                     bat '''
                         @echo off
-                        echo %REG_PASS% | docker login -u %REG_USER% --password-stdin
+
+                        echo Logging into Docker Hub...
+
+                        echo %REG_PASS% | docker login ^
+                        -u %REG_USER% ^
+                        --password-stdin
+
                         if errorlevel 1 exit /b 1
 
-                        docker push %REGISTRY%/%FRONTEND_IMAGE%:%IMAGE_TAG%
+                        echo Pushing Frontend Image...
+
+                        docker push %REGISTRY%/%FRONTEND_IMAGE%:%BUILD_NUMBER%
                         if errorlevel 1 exit /b 1
 
                         docker push %REGISTRY%/%FRONTEND_IMAGE%:latest
                         if errorlevel 1 exit /b 1
 
-                        docker push %REGISTRY%/%BACKEND_IMAGE%:%IMAGE_TAG%
+                        echo Pushing Backend Image...
+
+                        docker push %REGISTRY%/%BACKEND_IMAGE%:%BUILD_NUMBER%
                         if errorlevel 1 exit /b 1
 
                         docker push %REGISTRY%/%BACKEND_IMAGE%:latest
                         if errorlevel 1 exit /b 1
+
+                        echo Docker Images Successfully Pushed!
                     '''
                 }
             }
@@ -85,16 +106,16 @@ pipeline {
 
         stage('Deploy Frontend') {
             steps {
-                echo 'Deploying Frontend'
+                echo 'Deploying Frontend Container'
 
                 bat '''
                     docker rm -f %FRONTEND_CONTAINER% 2>NUL
 
                     docker run -d ^
-                        --name %FRONTEND_CONTAINER% ^
-                        --restart unless-stopped ^
-                        -p %FRONTEND_PORT%:80 ^
-                        %REGISTRY%/%FRONTEND_IMAGE%:latest
+                    --name %FRONTEND_CONTAINER% ^
+                    --restart unless-stopped ^
+                    -p %FRONTEND_PORT%:80 ^
+                    %REGISTRY%/%FRONTEND_IMAGE%:latest
 
                     if errorlevel 1 exit /b 1
                 '''
@@ -103,7 +124,7 @@ pipeline {
 
         stage('Deploy Backend') {
             steps {
-                echo 'Deploying Backend'
+                echo 'Deploying Backend Container'
 
                 withCredentials([
                     string(
@@ -115,22 +136,27 @@ pipeline {
                         docker rm -f %BACKEND_CONTAINER% 2>NUL
 
                         docker run -d ^
-                            --name %BACKEND_CONTAINER% ^
-                            --restart unless-stopped ^
-                            -p %BACKEND_PORT%:8000 ^
-                            -e MONGO_URI ^
-                            %REGISTRY%/%BACKEND_IMAGE%:latest
+                        --name %BACKEND_CONTAINER% ^
+                        --restart unless-stopped ^
+                        -p %BACKEND_PORT%:8000 ^
+                        -e MONGO_URI ^
+                        %REGISTRY%/%BACKEND_IMAGE%:latest
 
                         if errorlevel 1 exit /b 1
                     '''
                 }
             }
         }
+
     }
 
     post {
+
         success {
-            echo 'AI KNOWLEDGE OS CI/CD Pipeline Completed Successfully!'
+            echo '======================================'
+            echo 'AI KNOWLEDGE OS CI/CD SUCCESS!'
+            echo 'Frontend and Backend deployed!'
+            echo '======================================'
         }
 
         failure {
