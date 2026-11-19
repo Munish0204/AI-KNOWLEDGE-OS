@@ -1,0 +1,81 @@
+
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = 'ap-south-1'
+        AWS_ACCOUNT_ID = '882638355979'
+        ECR_REGISTRY = '882638355979.dkr.ecr.ap-south-1.amazonaws.com'
+
+        FRONTEND_REPO = 'ai-knowledge-frontend'
+        BACKEND_REPO = 'ai-knowledge-backend'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                echo 'Checking out AI-KNOWLEDGE-OS'
+                checkout scm
+            }
+        }
+
+        stage('Frontend Build') {
+            steps {
+                bat '''
+                    docker build -t %ECR_REGISTRY%/%FRONTEND_REPO%:latest -t %ECR_REGISTRY%/%FRONTEND_REPO%:%BUILD_NUMBER% -f Frontend\\Dockerfile Frontend
+                '''
+            }
+        }
+
+        stage('Backend Build') {
+            steps {
+                bat '''
+                    docker build -t %ECR_REGISTRY%/%BACKEND_REPO%:latest -t %ECR_REGISTRY%/%BACKEND_REPO%:%BUILD_NUMBER% -f Backend\\Dockerfile Backend
+                '''
+            }
+        }
+
+        stage('AWS ECR Login') {
+            steps {
+                withCredentials([
+                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
+                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                ]) {
+                    bat '''
+                        @echo off
+                        set AWS_DEFAULT_REGION=%AWS_REGION%
+                        "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_REGISTRY%
+                    '''
+                }
+            }
+        }
+
+        stage('Push Frontend to ECR') {
+            steps {
+                bat '''
+                    docker push %ECR_REGISTRY%/%FRONTEND_REPO%:latest
+                    docker push %ECR_REGISTRY%/%FRONTEND_REPO%:%BUILD_NUMBER%
+                '''
+            }
+        }
+
+        stage('Push Backend to ECR') {
+            steps {
+                bat '''
+                    docker push %ECR_REGISTRY%/%BACKEND_REPO%:latest
+                    docker push %ECR_REGISTRY%/%BACKEND_REPO%:%BUILD_NUMBER%
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'SUCCESS: Frontend and Backend images pushed to AWS ECR!'
+        }
+        failure {
+            echo 'FAILED: Check the Console Output.'
+        }
+    }
+}
