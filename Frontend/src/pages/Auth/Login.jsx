@@ -29,8 +29,10 @@ const Login = () => {
       })
       .catch((loginError) => {
         setError(
-          loginError?.response?.data?.message ||
-            "Login failed. Please check your credentials."
+          loginError?.response?.status === 502
+            ? "API server is unavailable. Please try again shortly."
+            : loginError?.response?.data?.message ||
+              "Login failed. Please check your credentials."
         );
       })
       .finally(() => {
@@ -134,6 +136,8 @@ const Login = () => {
           <input
             type="email"
             placeholder="Email"
+            required
+            autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className="login-input w-full border-2 border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400"
@@ -142,6 +146,8 @@ const Login = () => {
           <input
             type="password"
             placeholder="Password"
+            required
+            autoComplete="current-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="login-input w-full border-2 border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400"

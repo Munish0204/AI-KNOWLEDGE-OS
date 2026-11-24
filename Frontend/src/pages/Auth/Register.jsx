@@ -30,8 +30,10 @@ const Register = () => {
       })
       .catch((registerError) => {
         setError(
-          registerError?.response?.data?.message ||
-            "Registration failed. Please try again."
+          registerError?.response?.status === 502
+            ? "API server is unavailable. Please try again shortly."
+            : registerError?.response?.data?.message ||
+              "Registration failed. Please try again."
         );
       })
       .finally(() => {
@@ -130,6 +132,8 @@ const Register = () => {
           <input
             type="text"
             placeholder="Full name"
+            required
+            autoComplete="name"
             value={name}
             onChange={(event) => setName(event.target.value)}
             className="login-input w-full border-2 border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400"
@@ -138,6 +142,8 @@ const Register = () => {
           <input
             type="email"
             placeholder="Email"
+            required
+            autoComplete="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             className="login-input w-full border-2 border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400"
@@ -146,6 +152,8 @@ const Register = () => {
           <input
             type="password"
             placeholder="Password"
+            required
+            autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             className="login-input w-full border-2 border-slate-200 rounded-xl p-3 text-slate-700 placeholder-slate-400"
