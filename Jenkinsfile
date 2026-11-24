@@ -122,11 +122,13 @@ pipeline {
                 echo 'Deploying Frontend Container'
 
                 bat '''
+                    docker network create ai-network 2>NUL
                     docker rm -f %FRONTEND_CONTAINER% 2>NUL
 
                     docker run -d ^
                     --name %FRONTEND_CONTAINER% ^
                     --restart unless-stopped ^
+                    --network ai-network ^
                     -p %FRONTEND_PORT%:80 ^
                     %REGISTRY%/%FRONTEND_IMAGE%:latest
 
@@ -146,11 +148,13 @@ pipeline {
                     )
                 ]) {
                     bat '''
+                        docker network create ai-network 2>NUL
                         docker rm -f %BACKEND_CONTAINER% 2>NUL
 
                         docker run -d ^
                         --name %BACKEND_CONTAINER% ^
                         --restart unless-stopped ^
+                        --network ai-network ^
                         -p %BACKEND_PORT%:8000 ^
                         -e MONGO_URI ^
                         %REGISTRY%/%BACKEND_IMAGE%:latest
