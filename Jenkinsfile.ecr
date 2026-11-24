@@ -2,9 +2,15 @@
 pipeline {
     agent any
 
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+    }
+
     environment {
         AWS_REGION = 'ap-south-1'
         AWS_ACCOUNT_ID = '882638355979'
+
         ECR_REGISTRY = '882638355979.dkr.ecr.ap-south-1.amazonaws.com'
 
         FRONTEND_REPO = 'ai-knowledge-frontend'
@@ -13,6 +19,7 @@ pipeline {
 
     stages {
 
+        // 1. Checkout GitHub Repository
         stage('Checkout') {
             steps {
                 echo 'Checking out AI-KNOWLEDGE-OS'
@@ -20,51 +27,187 @@ pipeline {
             }
         }
 
-        stage('Frontend Build') {
+        // 2. Validate Project Files
+        stage('Validate Files') {
             steps {
                 bat '''
-                    docker build -t %ECR_REGISTRY%/%FRONTEND_REPO%:latest -t %ECR_REGISTRY%/%FRONTEND_REPO%:%BUILD_NUMBER% -f Frontend\\Dockerfile Frontend
+                    @echo off
+
+                    if not exist Frontend\\Dockerfile exit /b 1
+                    if not exist Backend\\Dockerfile exit /b 1
+
+                    echo Frontend and Backend Dockerfiles verified!
                 '''
             }
         }
 
-        stage('Backend Build') {
+        // 3. Build Frontend Docker Image
+        stage('Frontend Docker Build') {
             steps {
                 bat '''
-                    docker build -t %ECR_REGISTRY%/%BACKEND_REPO%:latest -t %ECR_REGISTRY%/%BACKEND_REPO%:%BUILD_NUMBER% -f Backend\\Dockerfile Backend
+                    docker build ^
+                    -t %ECR_REGISTRY%/%FRONTEND_REPO%:latest ^
+                    -t %ECR_REGISTRY%/%FRONTEND_REPO%:%BUILD_NUMBER% ^
+                    -f Frontend\\Dockerfile Frontend
+
+                    if errorlevel 1 exit /b 1
                 '''
             }
         }
 
+        // 4. Build Backend Docker Image
+        stage('Backend Docker Build') {
+            steps {
+                bat '''
+                    docker build ^
+                    -t %ECR_REGISTRY%/%BACKEND_REPO%:latest ^
+                    -t %ECR_REGISTRY%/%BACKEND_REPO%:%BUILD_NUMBER% ^
+                    -f Backend\\Dockerfile Backend
+
+                    if errorlevel 1 exit /b 1
+                '''
+            }
+        }
+
+        // 5. AWS ECR Authentication
         stage('AWS ECR Login') {
             steps {
                 withCredentials([
-                    string(credentialsId: 'aws-access-key-id', variable: 'AWS_ACCESS_KEY_ID'),
-                    string(credentialsId: 'aws-secret-access-key', variable: 'AWS_SECRET_ACCESS_KEY')
+                    string(
+                        credentialsId: 'aws-access-key-id',
+                        variable: 'AWS_ACCESS_KEY_ID'
+                    ),
+                    string(
+                        credentialsId: 'aws-secret-access-key',
+                        variable: 'AWS_SECRET_ACCESS_KEY'
+                    )
                 ]) {
                     bat '''
                         @echo off
+
                         set AWS_DEFAULT_REGION=%AWS_REGION%
+
                         "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ECR_REGISTRY%
+
+                        if errorlevel 1 exit /b 1
+
+                        echo AWS ECR Login Successful!
                     '''
                 }
             }
         }
 
+        // 6. Push Frontend Image to ECR
         stage('Push Frontend to ECR') {
             steps {
                 bat '''
                     docker push %ECR_REGISTRY%/%FRONTEND_REPO%:latest
+
+                    if errorlevel 1 exit /b 1
+
                     docker push %ECR_REGISTRY%/%FRONTEND_REPO%:%BUILD_NUMBER%
+
+                    if errorlevel 1 exit /b 1
+
+                    echo Frontend image pushed successfully!
                 '''
             }
         }
 
+        // 7. Push Backend Image to ECR
         stage('Push Backend to ECR') {
             steps {
                 bat '''
                     docker push %ECR_REGISTRY%/%BACKEND_REPO%:latest
+
+                    if errorlevel 1 exit /b 1
+
                     docker push %ECR_REGISTRY%/%BACKEND_REPO%:%BUILD_NUMBER%
+
+                    if errorlevel 1 exit /b 1
+
+                    echo Backend image pushed successfully!
+                '''
+            }
+        }
+
+        // 8. Pull Frontend Image from ECR
+        stage('Pull Frontend from ECR') {
+            steps {
+                bat '''
+                    docker pull %ECR_REGISTRY%/%FRONTEND_REPO%:latest
+
+                    if errorlevel 1 exit /b 1
+
+                    echo Frontend image pulled successfully!
+                '''
+            }
+        }
+
+        // 9. Pull Backend Image from ECR
+        stage('Pull Backend from ECR') {
+            steps {
+                bat '''
+                    docker pull %ECR_REGISTRY%/%BACKEND_REPO%:latest
+
+                    if errorlevel 1 exit /b 1
+
+                    echo Backend image pulled successfully!
+                '''
+            }
+        }
+
+        // 10. Verify ECR Images
+        stage('Verify ECR Images') {
+            steps {
+                withCredentials([
+                    string(
+                        credentialsId: 'aws-access-key-id',
+                        variable: 'AWS_ACCESS_KEY_ID'
+                    ),
+                    string(
+                        credentialsId: 'aws-secret-access-key',
+                        variable: 'AWS_SECRET_ACCESS_KEY'
+                    )
+                ]) {
+                    bat '''
+                        @echo off
+
+                        set AWS_DEFAULT_REGION=%AWS_REGION%
+
+                        echo Verifying Frontend ECR repository...
+
+                        "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" ecr describe-images --repository-name %FRONTEND_REPO% --region %AWS_REGION%
+
+                        if errorlevel 1 exit /b 1
+
+                        echo Verifying Backend ECR repository...
+
+                        "C:\\Program Files\\Amazon\\AWSCLIV2\\aws.exe" ecr describe-images --repository-name %BACKEND_REPO% --region %AWS_REGION%
+
+                        if errorlevel 1 exit /b 1
+
+                        echo Both ECR repositories verified successfully!
+                    '''
+                }
+            }
+        }
+
+        // 11. Verify Pulled Docker Images
+        stage('Verify Pulled Images') {
+            steps {
+                bat '''
+                    @echo off
+
+                    echo Frontend Docker Image:
+
+                    docker images %ECR_REGISTRY%/%FRONTEND_REPO%
+
+                    echo Backend Docker Image:
+
+                    docker images %ECR_REGISTRY%/%BACKEND_REPO%
+
+                    echo Both ECR images pulled and verified!
                 '''
             }
         }
@@ -72,10 +215,15 @@ pipeline {
 
     post {
         success {
-            echo 'SUCCESS: Frontend and Backend images pushed to AWS ECR!'
+            echo 'SUCCESS: Frontend and Backend images built, pushed and pulled from AWS ECR!'
         }
+
         failure {
-            echo 'FAILED: Check the Console Output.'
+            echo 'FAILED: Check Jenkins Console Output.'
+        }
+
+        always {
+            echo 'AI-KNOWLEDGE-OS Jenkins Pipeline Completed.'
         }
     }
 }
