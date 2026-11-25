@@ -1,5 +1,5 @@
 export const API_URL =
-  "http://15.207.16.243:8000/api";
+  "/api";
 
 export const APP_NAME =
   "AI Knowledge OS";
